@@ -42,6 +42,7 @@ interface TimelineNode {
   color: string;
   done: boolean;
   records: any[];
+  alerts: any[];
   summaryItems: { label: string; value: string; status?: 'normal' | 'warning' | 'error' }[];
   result?: 'qualified' | 'unqualified' | 'processing';
   time?: string;
@@ -51,10 +52,11 @@ interface TimelineNode {
 const WorkOrderDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getWorkOrderById, getRecordsByWorkOrderId } = useGearStore();
+  const { getWorkOrderById, getRecordsByWorkOrderId, getAlertsByWorkOrderId } = useGearStore();
 
   const workOrder = id ? getWorkOrderById(id) : undefined;
   const records = id ? getRecordsByWorkOrderId(id) : null;
+  const alertList = id ? getAlertsByWorkOrderId(id) : [];
 
   if (!workOrder || !records) {
     return (
@@ -153,6 +155,7 @@ const WorkOrderDetail: React.FC = () => {
         color: processColors[key],
         done,
         records: recs,
+        alerts: alertList.filter((a) => a.process === key),
         summaryItems,
         result,
         time,
@@ -418,6 +421,9 @@ const WorkOrderDetail: React.FC = () => {
                       ) : (
                         <Tag>待处理</Tag>
                       )}
+                      {node.alerts.length > 0 && (
+                        <Badge count={node.alerts.length} size="small" style={{ backgroundColor: node.alerts.some((a) => a.status === 'pending') ? '#F53F3F' : '#FF7D00' }} />
+                      )}
                       {node.time && <span className="text-xs text-gray-400 ml-auto">{node.time}</span>}
                     </div>
 
@@ -446,6 +452,47 @@ const WorkOrderDetail: React.FC = () => {
                           <div className="text-xs text-gray-400 mt-2 pt-2 border-t border-gray-200">
                             操作员：{node.operator}
                           </div>
+                        )}
+                      </div>
+                    )}
+
+                    {node.alerts.length > 0 && (
+                      <div className="mt-3 bg-orange-50 border border-orange-200 rounded-lg p-3">
+                        <div className="text-xs text-orange-700 font-medium mb-2 flex items-center gap-1">
+                          <AlertTriangle size={14} />
+                          关联异常 ({node.alerts.length}条)
+                        </div>
+                        <div className="space-y-1">
+                          {node.alerts.slice(0, 3).map((alert: any) => (
+                            <div
+                              key={alert.id}
+                              className="text-xs cursor-pointer hover:text-orange-600 transition-colors flex items-center justify-between"
+                              onClick={() => navigate(`/quality-alerts?alertId=${alert.id}`)}
+                            >
+                              <span className="truncate flex-1">
+                                <Tag color={alert.status === 'pending' ? 'red' : alert.status === 'processing' ? 'orange' : 'green'} style={{ padding: '0 6px', marginRight: 6, marginBottom: 0 }}>
+                                  {alert.status === 'pending' ? '待处理' : alert.status === 'processing' ? '处理中' : '已关闭'}
+                                </Tag>
+                                {alert.message}
+                              </span>
+                              {alert.recheckResult && (
+                                <span className={alert.recheckResult === 'passed' ? 'text-green-600 ml-2' : 'text-red-500 ml-2'}>
+                                  复检{alert.recheckResult === 'passed' ? '通过' : '未过'}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        {node.alerts.length > 0 && (
+                          <a
+                            className="text-xs text-blue-500 mt-2 inline-block hover:underline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/quality-alerts?workOrderId=${id}&process=${node.process}`);
+                            }}
+                          >
+                            查看全部异常 →
+                          </a>
                         )}
                       </div>
                     )}

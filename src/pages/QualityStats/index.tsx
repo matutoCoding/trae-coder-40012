@@ -1,9 +1,10 @@
 import { Row, Col, Card, Table, Tag, Select, Space } from 'antd';
-import { BarChart3, TrendingDown, Users, AlertTriangle } from 'lucide-react';
+import { BarChart3, TrendingDown, Users, AlertTriangle, Eye } from 'lucide-react';
 import ReactECharts from 'echarts-for-react';
 import { useGearStore } from '@/store';
 import { PageHeader, StatCard } from '@/components/common/PageComponents';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const processNames: Record<string, string> = {
   blank: '齿坯加工',
@@ -18,6 +19,7 @@ const processNames: Record<string, string> = {
 const processOrder = ['blank', 'hobbing', 'shaving', 'carburizing', 'grinding', 'inspection', 'matching'];
 
 const QualityStats: React.FC = () => {
+  const navigate = useNavigate();
   const {
     workOrders,
     blankRecords,
@@ -33,191 +35,296 @@ const QualityStats: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState<string>('all');
   const [selectedProcess, setSelectedProcess] = useState<string>('all');
 
-  const allModels = [...new Set(workOrders.map((wo) => wo.gearModel))];
+  const allModels = useMemo(
+    () => [...new Set(workOrders.map((wo) => wo.gearModel))],
+    [workOrders]
+  );
 
-  const filteredWorkOrders = selectedModel === 'all'
-    ? workOrders
-    : workOrders.filter((wo) => wo.gearModel === selectedModel);
+  const displayProcesses = useMemo(() => {
+    if (selectedProcess === 'all') return processOrder;
+    return [selectedProcess];
+  }, [selectedProcess]);
 
-  const filteredInspection = inspectionRecords.filter((r) => {
-    const wo = workOrders.find((w) => w.id === r.workOrderId);
-    if (!wo) return false;
-    if (selectedModel !== 'all' && wo.gearModel !== selectedModel) return false;
+  const getWorkOrderModel = (workOrderId: string): string => {
+    const wo = workOrders.find((w) => w.id === workOrderId);
+    return wo?.gearModel || '';
+  };
+
+  const matchesFilter = (workOrderId: string, processKey: string): boolean => {
+    if (selectedModel !== 'all') {
+      const model = getWorkOrderModel(workOrderId);
+      if (model !== selectedModel) return false;
+    }
+    if (selectedProcess !== 'all' && processKey !== selectedProcess) return false;
     return true;
-  });
+  };
 
-  const filteredMatching = matchingRecords.filter((r) => {
-    const wo = workOrders.find((w) => w.id === r.workOrderId);
-    if (!wo) return false;
-    if (selectedModel !== 'all' && wo.gearModel !== selectedModel) return false;
-    return true;
-  });
+  const recordMap: Record<string, any[]> = {
+    blank: blankRecords,
+    hobbing: hobbingRecords,
+    shaving: shavingRecords,
+    carburizing: carburizingRecords,
+    grinding: grindingRecords,
+    inspection: inspectionRecords,
+    matching: matchingRecords,
+  };
 
-  const qualifiedCount = filteredInspection.filter((r) => r.result === 'qualified').length +
-    filteredMatching.filter((r) => r.result === 'qualified').length;
-  const unqualifiedCount = filteredInspection.filter((r) => r.result === 'unqualified').length +
-    filteredMatching.filter((r) => r.result === 'unqualified').length;
-  const totalInspected = qualifiedCount + unqualifiedCount;
-  const overallRate = totalInspected > 0 ? Math.round((qualifiedCount / totalInspected) * 100) : 0;
+  const filteredProcessStats = useMemo(() => {
+    return displayProcesses.map((key) => {
+      const allRecs = recordMap[key] || [];
+      const filtered = allRecs.filter((r) => matchesFilter(r.workOrderId, key));
 
-  const processStats = processOrder.map((key) => {
-    const recordMap: Record<string, any[]> = {
-      blank: blankRecords,
-      hobbing: hobbingRecords,
-      shaving: shavingRecords,
-      carburizing: carburizingRecords,
-      grinding: grindingRecords,
-      inspection: inspectionRecords,
-      matching: matchingRecords,
-    };
-    const allRecs = recordMap[key] || [];
-    const filtered = allRecs.filter((r) => {
-      const wo = workOrders.find((w) => w.id === r.workOrderId);
-      if (!wo) return false;
-      if (selectedModel !== 'all' && wo.gearModel !== selectedModel) return false;
-      return true;
+      let anomalyCount = 0;
+      const totalCount = filtered.length;
+
+      filtered.forEach((r: any) => {
+        if (key === 'blank' && (r.outerDiameter > 260 || r.outerDiameter < 20 || r.endFaceRunout > 0.02 || r.roughness > 3.2)) anomalyCount++;
+        if (key === 'hobbing' && (r.toothDirectionError > 0.02 || r.pitchCumulativeError > 0.06)) anomalyCount++;
+        if (key === 'shaving' && (r.allowance < 0.1 || r.allowance > 0.2)) anomalyCount++;
+        if (key === 'carburizing' && (r.caseDepth < 0.5 || r.caseDepth > 1.5 || r.surfaceHardness < 58)) anomalyCount++;
+        if (key === 'grinding' && r.grindingAccuracy > 6) anomalyCount++;
+        if (key === 'inspection' && r.result === 'unqualified') anomalyCount++;
+        if (key === 'matching' && (r.noiseDb > 72 || r.result === 'unqualified')) anomalyCount++;
+      });
+
+      const rate = totalCount > 0 ? Math.round(((totalCount - anomalyCount) / totalCount) * 100) : 0;
+
+      return {
+        process: key,
+        name: processNames[key],
+        totalCount,
+        anomalyCount,
+        rate,
+      };
+    });
+  }, [selectedModel, selectedProcess, blankRecords, hobbingRecords, shavingRecords, carburizingRecords, grindingRecords, inspectionRecords, matchingRecords, workOrders]);
+
+  const { overallRate, totalInspected, unqualifiedCount } = useMemo(() => {
+    let qualified = 0;
+    let unqualified = 0;
+
+    displayProcesses.forEach((key) => {
+      const stats = filteredProcessStats.find((s) => s.process === key);
+      if (stats) {
+        qualified += stats.totalCount - stats.anomalyCount;
+        unqualified += stats.anomalyCount;
+      }
     });
 
-    let anomalyCount = 0;
-    let totalCount = filtered.length;
-
-    filtered.forEach((r) => {
-      if (key === 'blank' && (r.outerDiameter > 260 || r.outerDiameter < 20 || r.endFaceRunout > 0.02 || r.roughness > 3.2)) anomalyCount++;
-      if (key === 'hobbing' && (r.toothDirectionError > 0.02 || r.pitchCumulativeError > 0.06)) anomalyCount++;
-      if (key === 'shaving' && (r.allowance < 0.1 || r.allowance > 0.2)) anomalyCount++;
-      if (key === 'carburizing' && (r.caseDepth < 0.5 || r.caseDepth > 1.5 || r.surfaceHardness < 58)) anomalyCount++;
-      if (key === 'grinding' && r.grindingAccuracy > 6) anomalyCount++;
-      if (key === 'inspection' && r.result === 'unqualified') anomalyCount++;
-      if (key === 'matching' && (r.noiseDb > 72 || r.result === 'unqualified')) anomalyCount++;
-    });
-
-    const rate = totalCount > 0 ? Math.round(((totalCount - anomalyCount) / totalCount) * 100) : 0;
+    const total = qualified + unqualified;
+    const rate = total > 0 ? Math.round((qualified / total) * 100) : 0;
 
     return {
-      process: key,
-      name: processNames[key],
-      totalCount,
-      anomalyCount,
-      rate,
+      overallRate: rate,
+      totalInspected: total,
+      unqualifiedCount: unqualified,
     };
-  });
+  }, [displayProcesses, filteredProcessStats]);
 
-  const operatorStats: Record<string, { total: number; anomaly: number }> = {};
-  const allRecords = [
-    ...blankRecords.map((r) => ({ operator: r.operator, anomaly: r.outerDiameter > 260 || r.endFaceRunout > 0.02 })),
-    ...hobbingRecords.map((r) => ({ operator: r.operator, anomaly: !!(r.toothDirectionError && r.toothDirectionError > 0.02) })),
-    ...shavingRecords.map((r) => ({ operator: r.operator, anomaly: r.allowance < 0.1 || r.allowance > 0.2 })),
-    ...carburizingRecords.map((r) => ({ operator: r.operator, anomaly: r.caseDepth < 0.5 || r.surfaceHardness < 58 })),
-    ...grindingRecords.map((r) => ({ operator: r.operator, anomaly: r.grindingAccuracy > 6 })),
-    ...inspectionRecords.map((r) => ({ operator: r.inspector, anomaly: r.result === 'unqualified' })),
-    ...matchingRecords.map((r) => ({ operator: r.inspector, anomaly: r.result === 'unqualified' || r.noiseDb > 72 })),
-  ];
+  const filteredAlerts = useMemo(() => {
+    return alerts.filter((a) => {
+      if (selectedModel !== 'all') {
+        const model = getWorkOrderModel(a.workOrderId);
+        if (model !== selectedModel) return false;
+      }
+      if (selectedProcess !== 'all' && a.process !== selectedProcess) return false;
+      return true;
+    });
+  }, [alerts, selectedModel, selectedProcess, workOrders]);
 
-  allRecords.forEach((r) => {
-    if (!operatorStats[r.operator]) operatorStats[r.operator] = { total: 0, anomaly: 0 };
-    operatorStats[r.operator].total++;
-    if (r.anomaly) operatorStats[r.operator].anomaly++;
-  });
+  const operatorStats = useMemo(() => {
+    const statsMap: Record<string, { total: number; anomaly: number }> = {};
 
-  const operatorTableData = Object.entries(operatorStats).map(([name, stat]) => ({
-    name,
-    total: stat.total,
-    anomaly: stat.anomaly,
-    rate: stat.total > 0 ? Math.round(((stat.total - stat.anomaly) / stat.total) * 100) : 0,
-  }));
+    displayProcesses.forEach((key) => {
+      const allRecs = recordMap[key] || [];
+      const filtered = allRecs.filter((r) => matchesFilter(r.workOrderId, key));
 
-  const processBarOption = {
-    tooltip: { trigger: 'axis' },
-    legend: { data: ['异常次数', '合格率%'], right: 0, top: 0 },
-    grid: { left: 80, right: 40, top: 40, bottom: 40 },
-    xAxis: {
-      type: 'category',
-      data: processStats.map((p) => p.name),
-      axisLabel: { color: '#86909C', rotate: 20 },
-    },
-    yAxis: [
-      { type: 'value', name: '异常次数', axisLabel: { color: '#86909C' }, splitLine: { lineStyle: { color: '#F2F3F5' } } },
-      { type: 'value', name: '合格率%', min: 0, max: 100, axisLabel: { color: '#86909C' }, splitLine: { show: false } },
-    ],
-    series: [
-      {
-        name: '异常次数',
-        type: 'bar',
-        data: processStats.map((p) => p.anomalyCount),
-        itemStyle: {
-          color: (params: any) => params.value > 0 ? '#F53F3F' : '#00B42A',
-          borderRadius: [4, 4, 0, 0],
+      filtered.forEach((r: any) => {
+        const operator = r.operator || r.inspector || '未知';
+        let isAnomaly = false;
+
+        if (key === 'blank' && (r.outerDiameter > 260 || r.endFaceRunout > 0.02)) isAnomaly = true;
+        if (key === 'hobbing' && (r.toothDirectionError && r.toothDirectionError > 0.02)) isAnomaly = true;
+        if (key === 'shaving' && (r.allowance < 0.1 || r.allowance > 0.2)) isAnomaly = true;
+        if (key === 'carburizing' && (r.caseDepth < 0.5 || r.surfaceHardness < 58)) isAnomaly = true;
+        if (key === 'grinding' && r.grindingAccuracy > 6) isAnomaly = true;
+        if (key === 'inspection' && r.result === 'unqualified') isAnomaly = true;
+        if (key === 'matching' && (r.result === 'unqualified' || r.noiseDb > 72)) isAnomaly = true;
+
+        if (!statsMap[operator]) statsMap[operator] = { total: 0, anomaly: 0 };
+        statsMap[operator].total++;
+        if (isAnomaly) statsMap[operator].anomaly++;
+      });
+    });
+
+    return Object.entries(statsMap).map(([name, stat]) => ({
+      name,
+      total: stat.total,
+      anomaly: stat.anomaly,
+      rate: stat.total > 0 ? Math.round(((stat.total - stat.anomaly) / stat.total) * 100) : 0,
+    }));
+  }, [selectedModel, selectedProcess, displayProcesses, workOrders]);
+
+  const modelPieOption = useMemo(() => {
+    const modelStats: Record<string, number> = {};
+    displayProcesses.forEach((key) => {
+      const allRecs = recordMap[key] || [];
+      const filtered = selectedProcess === 'all'
+        ? allRecs
+        : allRecs.filter((r) => r.workOrderId && matchesFilter(r.workOrderId, key));
+      filtered.forEach((r: any) => {
+        const model = getWorkOrderModel(r.workOrderId);
+        if (model) {
+          modelStats[model] = (modelStats[model] || 0) + 1;
+        }
+      });
+    });
+
+    const colorMap: Record<string, string> = {
+      'M4Z30': '#165DFF',
+      'M4Z60': '#722ED1',
+      'M5Z12': '#13C2C2',
+      'M3Z25': '#00B42A',
+      'M3Z16': '#FF7D00',
+    };
+
+    return {
+      tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+      legend: { orient: 'vertical', left: 'left', top: 'center' },
+      series: [{
+        type: 'pie',
+        radius: ['45%', '70%'],
+        center: ['60%', '50%'],
+        avoidLabelOverlap: false,
+        label: { show: false },
+        emphasis: { label: { show: true, fontSize: 13, fontWeight: 'bold' } },
+        data: Object.entries(modelStats).map(([name, value]) => ({
+          name,
+          value,
+          itemStyle: { color: colorMap[name] || '#86909C' },
+        })),
+      }],
+    };
+  }, [selectedModel, selectedProcess, displayProcesses, workOrders]);
+
+  const processBarOption = useMemo(() => {
+    return {
+      tooltip: { trigger: 'axis' },
+      legend: { data: ['异常次数', '合格率%'], right: 0, top: 0 },
+      grid: { left: 80, right: 40, top: 40, bottom: 40 },
+      xAxis: {
+        type: 'category',
+        data: filteredProcessStats.map((p) => p.name),
+        axisLabel: { color: '#86909C', rotate: displayProcesses.length > 3 ? 20 : 0 },
+      },
+      yAxis: [
+        { type: 'value', name: '异常次数', axisLabel: { color: '#86909C' }, splitLine: { lineStyle: { color: '#F2F3F5' } } },
+        { type: 'value', name: '合格率%', min: 0, max: 100, axisLabel: { color: '#86909C' }, splitLine: { show: false } },
+      ],
+      series: [
+        {
+          name: '异常次数',
+          type: 'bar',
+          data: filteredProcessStats.map((p) => p.anomalyCount),
+          itemStyle: {
+            color: (params: any) => params.value > 0 ? '#F53F3F' : '#00B42A',
+            borderRadius: [4, 4, 0, 0],
+          },
+          barWidth: 28,
         },
-        barWidth: 28,
-      },
-      {
-        name: '合格率%',
-        type: 'line',
-        yAxisIndex: 1,
-        data: processStats.map((p) => p.rate),
-        smooth: true,
-        symbol: 'circle',
-        symbolSize: 8,
-        lineStyle: { color: '#165DFF', width: 2 },
-        itemStyle: { color: '#165DFF' },
-        label: { show: true, formatter: '{c}%', position: 'top', fontSize: 11 },
-      },
-    ],
-  };
+        {
+          name: '合格率%',
+          type: 'line',
+          yAxisIndex: 1,
+          data: filteredProcessStats.map((p) => p.rate),
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: 8,
+          lineStyle: { color: '#165DFF', width: 2 },
+          itemStyle: { color: '#165DFF' },
+          label: { show: true, formatter: '{c}%', position: 'top', fontSize: 11 },
+        },
+      ],
+    };
+  }, [filteredProcessStats, displayProcesses]);
 
-  const modelPieOption = {
-    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
-    legend: { orient: 'vertical', left: 'left', top: 'center' },
-    series: [{
-      type: 'pie',
-      radius: ['45%', '70%'],
-      center: ['60%', '50%'],
-      avoidLabelOverlap: false,
-      label: { show: false },
-      emphasis: { label: { show: true, fontSize: 13, fontWeight: 'bold' } },
-      data: allModels.map((model) => {
-        const woCount = workOrders.filter((wo) => wo.gearModel === model).length;
-        return { name: model, value: woCount, itemStyle: { color: model === 'M4Z30' ? '#165DFF' : model === 'M4Z60' ? '#722ED1' : model === 'M5Z12' ? '#13C2C2' : model === 'M3Z25' ? '#00B42A' : model === 'M3Z16' ? '#FF7D00' : '#86909C' } };
-      }),
-    }],
-  };
+  const trendOption = useMemo(() => {
+    const weekLabels = ['第1周', '第2周', '第3周', '第4周', '本周'];
+    const rates: number[] = [];
+    const anomalies: number[] = [];
 
-  const trendOption = {
-    tooltip: { trigger: 'axis' },
-    legend: { data: ['合格率%', '异常数'], right: 0, top: 0 },
-    grid: { left: 60, right: 40, top: 40, bottom: 40 },
-    xAxis: {
-      type: 'category',
-      data: ['第1周', '第2周', '第3周', '第4周', '本周'],
-      axisLabel: { color: '#86909C' },
-    },
-    yAxis: [
-      { type: 'value', name: '合格率%', min: 70, max: 100, axisLabel: { color: '#86909C' }, splitLine: { lineStyle: { color: '#F2F3F5' } } },
-      { type: 'value', name: '异常数', axisLabel: { color: '#86909C' }, splitLine: { show: false } },
-    ],
-    series: [
-      {
-        name: '合格率%',
-        type: 'line',
-        data: [95, 92, 88, 91, overallRate || 90],
-        smooth: true,
-        symbol: 'circle',
-        symbolSize: 8,
-        lineStyle: { color: '#00B42A', width: 3 },
-        itemStyle: { color: '#00B42A' },
-        areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(0,180,42,0.2)' }, { offset: 1, color: 'rgba(0,180,42,0)' }] } },
-        markLine: { silent: true, data: [{ yAxis: 90, lineStyle: { color: '#FF7D00', type: 'dashed' }, label: { formatter: '目标线 90%' } }] },
+    for (let i = 4; i >= 0; i--) {
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - i * 7 - 6);
+      const weekEnd = new Date();
+      weekEnd.setDate(weekEnd.getDate() - i * 7);
+      weekEnd.setHours(23, 59, 59, 999);
+
+      let weekTotal = 0;
+      let weekAnomaly = 0;
+
+      displayProcesses.forEach((key) => {
+        const allRecs = recordMap[key] || [];
+        const filtered = allRecs.filter((r) => {
+          if (!matchesFilter(r.workOrderId, key)) return false;
+          const t = new Date(r.recordTime).getTime();
+          return t >= weekStart.getTime() && t <= weekEnd.getTime();
+        });
+
+        weekTotal += filtered.length;
+        filtered.forEach((r: any) => {
+          if (key === 'blank' && (r.outerDiameter > 260 || r.endFaceRunout > 0.02)) weekAnomaly++;
+          if (key === 'hobbing' && (r.toothDirectionError && r.toothDirectionError > 0.02)) weekAnomaly++;
+          if (key === 'shaving' && (r.allowance < 0.1 || r.allowance > 0.2)) weekAnomaly++;
+          if (key === 'carburizing' && (r.caseDepth < 0.5 || r.surfaceHardness < 58)) weekAnomaly++;
+          if (key === 'grinding' && r.grindingAccuracy > 6) weekAnomaly++;
+          if (key === 'inspection' && r.result === 'unqualified') weekAnomaly++;
+          if (key === 'matching' && (r.result === 'unqualified' || r.noiseDb > 72)) weekAnomaly++;
+        });
+      });
+
+      weekTotal = Math.max(weekTotal, 1);
+      rates.push(Math.round(((weekTotal - weekAnomaly) / weekTotal) * 100));
+      anomalies.push(weekAnomaly);
+    }
+
+    return {
+      tooltip: { trigger: 'axis' },
+      legend: { data: ['合格率%', '异常数'], right: 0, top: 0 },
+      grid: { left: 60, right: 40, top: 40, bottom: 40 },
+      xAxis: {
+        type: 'category',
+        data: weekLabels,
+        axisLabel: { color: '#86909C' },
       },
-      {
-        name: '异常数',
-        type: 'bar',
-        yAxisIndex: 1,
-        data: [3, 5, 8, 4, alerts.length || 2],
-        itemStyle: { color: '#F53F3F', borderRadius: [4, 4, 0, 0] },
-        barWidth: 24,
-      },
-    ],
-  };
+      yAxis: [
+        { type: 'value', name: '合格率%', min: 70, max: 100, axisLabel: { color: '#86909C' }, splitLine: { lineStyle: { color: '#F2F3F5' } } },
+        { type: 'value', name: '异常数', axisLabel: { color: '#86909C' }, splitLine: { show: false } },
+      ],
+      series: [
+        {
+          name: '合格率%',
+          type: 'line',
+          data: rates,
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: 8,
+          lineStyle: { color: '#00B42A', width: 3 },
+          itemStyle: { color: '#00B42A' },
+          areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(0,180,42,0.2)' }, { offset: 1, color: 'rgba(0,180,42,0)' }] } },
+          markLine: { silent: true, data: [{ yAxis: 90, lineStyle: { color: '#FF7D00', type: 'dashed' }, label: { formatter: '目标线 90%' } }] },
+        },
+        {
+          name: '异常数',
+          type: 'bar',
+          yAxisIndex: 1,
+          data: anomalies,
+          itemStyle: { color: '#F53F3F', borderRadius: [4, 4, 0, 0] },
+          barWidth: 24,
+        },
+      ],
+    };
+  }, [selectedModel, selectedProcess, displayProcesses, workOrders]);
 
   const processColumns = [
     { title: '工序', dataIndex: 'name', width: 120, render: (v: string, r: any) => <span className="font-semibold">{v}</span> },
@@ -269,7 +376,7 @@ const QualityStats: React.FC = () => {
     },
   ];
 
-  const recentAlerts = alerts.slice(0, 10);
+  const recentAlerts = filteredAlerts.slice(0, 10);
 
   return (
     <div className="quality-stats-page">
@@ -328,7 +435,7 @@ const QualityStats: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <StatCard
             title="实时预警"
-            value={alerts.length}
+            value={filteredAlerts.length}
             unit="条"
             icon={<AlertTriangle size={20} />}
             color="#FF7D00"
@@ -375,7 +482,7 @@ const QualityStats: React.FC = () => {
           >
             <Table
               columns={processColumns}
-              dataSource={processStats}
+              dataSource={filteredProcessStats}
               rowKey="process"
               pagination={false}
               size="middle"
@@ -389,7 +496,7 @@ const QualityStats: React.FC = () => {
           >
             <Table
               columns={operatorColumns}
-              dataSource={operatorTableData}
+              dataSource={operatorStats}
               rowKey="name"
               pagination={false}
               size="middle"
@@ -400,16 +507,26 @@ const QualityStats: React.FC = () => {
 
       {recentAlerts.length > 0 && (
         <Card
-          title={<span className="font-semibold flex items-center gap-2"><AlertTriangle size={16} className="text-orange-500" />最近质量预警 ({alerts.length})</span>}
+          title={<span className="font-semibold flex items-center gap-2"><AlertTriangle size={16} className="text-orange-500" />最近质量预警 ({filteredAlerts.length})</span>}
           style={{ borderRadius: 8 }}
+          styles={{ body: { padding: 20 } }}
         >
           <Table
             columns={[
               { title: '时间', dataIndex: 'time', width: 170 },
               { title: '工序', dataIndex: 'process', width: 100, render: (v: string) => <Tag>{processNames[v] || v}</Tag> },
+              { title: '状态', dataIndex: 'status', width: 90, align: 'center' as const, render: (v: string) => {
+                const colorMap: Record<string, string> = { pending: 'red', processing: 'orange', closed: 'green' };
+                const textMap: Record<string, string> = { pending: '待处理', processing: '处理中', closed: '已关闭' };
+                return <Tag color={colorMap[v]}>{textMap[v]}</Tag>;
+              }},
               { title: '级别', dataIndex: 'level', width: 80, align: 'center' as const, render: (v: string) => <Tag color={v === '严重' ? 'red' : v === '中等' ? 'orange' : 'blue'}>{v}</Tag> },
               { title: '预警内容', dataIndex: 'message' },
-              { title: '类型', dataIndex: 'type', width: 80, align: 'center' as const, render: (v: string) => <Tag color={v === 'error' ? 'red' : v === 'warning' ? 'orange' : 'blue'}>{v === 'error' ? '严重' : v === 'warning' ? '警告' : '提示'}</Tag> },
+              { title: '操作', key: 'action', width: 90, align: 'center' as const, render: (_: any, record: any) => (
+                <a onClick={() => navigate(`/quality-alerts?alertId=${record.id}`)}>
+                  <Space><Eye size={14} />查看</Space>
+                </a>
+              )},
             ]}
             dataSource={recentAlerts}
             rowKey="id"

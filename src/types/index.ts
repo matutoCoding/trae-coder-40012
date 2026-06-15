@@ -134,6 +134,9 @@ export interface ProcessKey {
   path: string;
 }
 
+export type AlertStatus = 'pending' | 'processing' | 'closed';
+export type RecheckResult = 'passed' | 'failed' | null;
+
 export interface QualityAlert {
   id: string;
   type: 'warning' | 'error' | 'info';
@@ -145,4 +148,12 @@ export interface QualityAlert {
   field: string;
   value: number;
   message: string;
+  status: AlertStatus;
+  handler?: string;
+  handleTime?: string;
+  measure?: string;
+  recheckResult?: RecheckResult;
+  recheckTime?: string;
+  rechecker?: string;
+  remark?: string;
 }

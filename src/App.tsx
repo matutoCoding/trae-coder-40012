@@ -13,6 +13,8 @@ import MatchingPage from '@/pages/Matching';
 import WorkOrderList from '@/pages/WorkOrder/WorkOrderList';
 import WorkOrderDetail from '@/pages/WorkOrder/WorkOrderDetail';
 import QualityStats from '@/pages/QualityStats';
+import QualityAlerts from '@/pages/QualityAlerts';
+import QualityReport from '@/pages/QualityReport';
 import SettingsPage from '@/pages/Settings';
 import 'dayjs/locale/zh-cn';
 
@@ -72,6 +74,8 @@ const App: React.FC = () => {
               <Route path="/inspection" element={<InspectionPage />} />
               <Route path="/matching" element={<MatchingPage />} />
               <Route path="/quality-stats" element={<QualityStats />} />
+              <Route path="/quality-alerts" element={<QualityAlerts />} />
+              <Route path="/quality-report" element={<QualityReport />} />
               <Route path="/workorders" element={<WorkOrderList />} />
               <Route path="/workorders/:id" element={<WorkOrderDetail />} />
               <Route path="/settings" element={<SettingsPage />} />

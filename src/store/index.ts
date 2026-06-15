@@ -38,7 +38,13 @@ interface GearStore {
   addGrindingRecord: (data: Omit<GrindingRecord, 'id' | 'recordTime'>) => void;
   addInspectionRecord: (data: Omit<InspectionRecord, 'id' | 'recordTime'>) => void;
   addMatchingRecord: (data: Omit<MatchingRecord, 'id' | 'recordTime'>) => void;
-  addAlert: (alert: Omit<QualityAlert, 'id' | 'time'>) => void;
+  addAlert: (alert: Omit<QualityAlert, 'id' | 'time' | 'status'>) => void;
+  updateAlert: (id: string, data: Partial<QualityAlert>) => void;
+  updateAlertStatus: (id: string, status: QualityAlert['status']) => void;
+  handleAlert: (id: string, data: { handler: string; measure: string; remark?: string }) => void;
+  closeAlert: (id: string, data: { recheckResult: 'passed' | 'failed'; rechecker: string; remark?: string }) => void;
+  getAlertById: (id: string) => QualityAlert | undefined;
+  getAlertsByWorkOrderId: (workOrderId: string) => QualityAlert[];
 
   getWorkOrderById: (id: string) => WorkOrder | undefined;
   getRecordsByWorkOrderId: (workOrderId: string) => {
@@ -231,8 +237,67 @@ export const useGearStore = create<GearStore>()(
           ...alert,
           id: generateId(),
           time: formatDateTime(),
+          status: 'pending',
         };
         set((state) => ({ alerts: [newAlert, ...state.alerts] }));
+      },
+
+      updateAlert: (id, data) => {
+        set((state) => ({
+          alerts: state.alerts.map((a) =>
+            a.id === id ? { ...a, ...data } : a
+          ),
+        }));
+      },
+
+      updateAlertStatus: (id, status) => {
+        set((state) => ({
+          alerts: state.alerts.map((a) =>
+            a.id === id ? { ...a, status } : a
+          ),
+        }));
+      },
+
+      handleAlert: (id, data) => {
+        set((state) => ({
+          alerts: state.alerts.map((a) =>
+            a.id === id
+              ? {
+                  ...a,
+                  status: 'processing',
+                  handler: data.handler,
+                  handleTime: formatDateTime(),
+                  measure: data.measure,
+                  remark: data.remark,
+                }
+              : a
+          ),
+        }));
+      },
+
+      closeAlert: (id, data) => {
+        set((state) => ({
+          alerts: state.alerts.map((a) =>
+            a.id === id
+              ? {
+                  ...a,
+                  status: 'closed',
+                  recheckResult: data.recheckResult,
+                  recheckTime: formatDateTime(),
+                  rechecker: data.rechecker,
+                  remark: data.remark || a.remark,
+                }
+              : a
+          ),
+        }));
+      },
+
+      getAlertById: (id) => {
+        return get().alerts.find((a) => a.id === id);
+      },
+
+      getAlertsByWorkOrderId: (workOrderId) => {
+        return get().alerts.filter((a) => a.workOrderId === workOrderId);
       },
 
       getWorkOrderById: (id) => {
@@ -254,6 +319,15 @@ export const useGearStore = create<GearStore>()(
     }),
     {
       name: 'gear-factory-storage',
+      migrate: (persistedState: any, version: number) => {
+        if (persistedState?.alerts) {
+          persistedState.alerts = persistedState.alerts.map((alert: any) => ({
+            status: 'pending',
+            ...alert,
+          }));
+        }
+        return persistedState;
+      },
     }
   )
 );

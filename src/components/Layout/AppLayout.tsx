@@ -15,6 +15,8 @@ import {
   PanelLeftClose,
   PanelLeft,
   BarChart3,
+  AlertTriangle,
+  FileText,
 } from 'lucide-react';
 import HeaderBar from './HeaderBar';
 
@@ -46,7 +48,17 @@ const menuItems: MenuItem[] = [
   },
   { key: '/inspection', icon: FileCheck, label: '齿形检测', path: '/inspection' },
   { key: '/matching', icon: Puzzle, label: '配对啮合', path: '/matching' },
-  { key: '/quality-stats', icon: BarChart3, label: '质量统计', path: '/quality-stats' },
+  {
+    key: 'quality',
+    icon: BarChart3,
+    label: '质量管理',
+    path: '',
+    children: [
+      { key: '/quality-stats', icon: BarChart3, label: '质量统计', path: '/quality-stats' },
+      { key: '/quality-alerts', icon: AlertTriangle, label: '异常闭环', path: '/quality-alerts' },
+      { key: '/quality-report', icon: FileText, label: '周报导出', path: '/quality-report' },
+    ],
+  },
   { key: '/settings', icon: Settings, label: '系统设置', path: '/settings' },
 ];
 
