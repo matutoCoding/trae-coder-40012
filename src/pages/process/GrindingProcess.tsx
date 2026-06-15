@@ -4,6 +4,7 @@ import { Sparkles, Eye } from 'lucide-react';
 import ReactECharts from 'echarts-for-react';
 import { useGearStore } from '@/store';
 import { PageHeader, StatusTag } from '@/components/common/PageComponents';
+import { validateGrinding } from '@/utils';
 
 const GrindingProcess: React.FC = () => {
   const { grindingRecords, workOrders, addGrindingRecord, getWorkOrderById } = useGearStore();
@@ -14,8 +15,14 @@ const GrindingProcess: React.FC = () => {
 
   const handleSubmit = () => {
     form.validateFields().then((values) => {
+      const validation = validateGrinding({ grindingAccuracy: values.grindingAccuracy });
       addGrindingRecord(values);
       message.success('磨齿精加工记录添加成功');
+      if (validation.warnings.length > 0) {
+        validation.warnings.forEach((w) => {
+          message.warning({ content: w.message, duration: 5 });
+        });
+      }
       setIsModalOpen(false);
       form.resetFields();
     });

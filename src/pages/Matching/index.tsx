@@ -4,6 +4,7 @@ import { Puzzle, Eye, Volume2, VolumeX } from 'lucide-react';
 import ReactECharts from 'echarts-for-react';
 import { useGearStore } from '@/store';
 import { PageHeader, StatusTag } from '@/components/common/PageComponents';
+import { validateMatching } from '@/utils';
 
 const MatchingPage: React.FC = () => {
   const { matchingRecords, workOrders, addMatchingRecord, getWorkOrderById } = useGearStore();
@@ -14,8 +15,14 @@ const MatchingPage: React.FC = () => {
 
   const handleSubmit = () => {
     form.validateFields().then((values) => {
+      const validation = validateMatching({ noiseDb: values.noiseDb, backlash: values.backlash });
       addMatchingRecord(values);
       message.success('配对啮合记录添加成功');
+      if (validation.warnings.length > 0) {
+        validation.warnings.forEach((w) => {
+          message.warning({ content: w.message, duration: 5 });
+        });
+      }
       setIsModalOpen(false);
       form.resetFields();
     });
@@ -155,14 +162,14 @@ const MatchingPage: React.FC = () => {
 
       <Row gutter={[16, 16]} className="mb-6">
         <Col xs={24} sm={12} lg={6}>
-          <Card className="h-full" style={{ borderRadius: 8 }} bodyStyle={{ padding: 16 }}>
+          <Card className="h-full" style={{ borderRadius: 8 }} styles={{ body: { padding: 16 } }}>
             <div className="text-xs text-gray-500 mb-2">配对完成数</div>
             <div className="font-bold text-2xl text-purple-600">{matchingRecords.length}</div>
             <div className="text-xs text-gray-400 mt-2">对</div>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="h-full" style={{ borderRadius: 8 }} bodyStyle={{ padding: 16 }}>
+          <Card className="h-full" style={{ borderRadius: 8 }} styles={{ body: { padding: 16 } }}>
             <div className="text-xs text-gray-500 mb-2">合格率</div>
             <div className="font-bold text-2xl text-green-600">
               {matchingRecords.length ? Math.round(matchingRecords.filter((r) => r.result === 'qualified').length / matchingRecords.length * 100) : 0}%
@@ -173,7 +180,7 @@ const MatchingPage: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="h-full" style={{ borderRadius: 8 }} bodyStyle={{ padding: 16 }}>
+          <Card className="h-full" style={{ borderRadius: 8 }} styles={{ body: { padding: 16 } }}>
             <div className="text-xs text-gray-500 mb-2">平均侧隙</div>
             <div className="font-bold text-2xl text-blue-600 font-mono">
               {matchingRecords.length ? (matchingRecords.reduce((s, r) => s + r.backlash, 0) / matchingRecords.length).toFixed(3) : '0'}
@@ -182,7 +189,7 @@ const MatchingPage: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="h-full" style={{ borderRadius: 8 }} bodyStyle={{ padding: 16 }}>
+          <Card className="h-full" style={{ borderRadius: 8 }} styles={{ body: { padding: 16 } }}>
             <div className="text-xs text-gray-500 mb-2">平均噪声</div>
             <div className="font-bold text-2xl font-mono" style={{ color: matchingRecords.length && matchingRecords.reduce((s, r) => s + r.noiseDb, 0) / matchingRecords.length <= 72 ? '#00B42A' : '#F53F3F' }}>
               {matchingRecords.length ? (matchingRecords.reduce((s, r) => s + r.noiseDb, 0) / matchingRecords.length).toFixed(0) : '0'}

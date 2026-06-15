@@ -4,7 +4,7 @@ import { Scissors, Eye, Calculator } from 'lucide-react';
 import ReactECharts from 'echarts-for-react';
 import { useGearStore } from '@/store';
 import { PageHeader, StatusTag } from '@/components/common/PageComponents';
-import { calculateAllowance } from '@/utils';
+import { calculateAllowance, validateShaving } from '@/utils';
 
 const ShavingProcess: React.FC = () => {
   const { shavingRecords, workOrders, addShavingRecord, getWorkOrderById } = useGearStore();
@@ -22,8 +22,14 @@ const ShavingProcess: React.FC = () => {
   const handleSubmit = () => {
     form.validateFields().then((values) => {
       const allowance = calculateAllowance(values.preShaveWk, values.postShaveWk);
+      const validation = validateShaving({ allowance });
       addShavingRecord({ ...values, allowance });
       message.success('剃齿记录添加成功，剃齿余量：' + allowance.toFixed(3) + ' mm');
+      if (validation.warnings.length > 0) {
+        validation.warnings.forEach((w) => {
+          message.warning({ content: w.message, duration: 5 });
+        });
+      }
       setIsModalOpen(false);
       form.resetFields();
       setPreShaveValue(null);

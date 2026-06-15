@@ -4,6 +4,7 @@ import { FileCheck, Eye, Activity, Ruler, CircleDashed, Gauge } from 'lucide-rea
 import ReactECharts from 'echarts-for-react';
 import { useGearStore } from '@/store';
 import { PageHeader, StatusTag } from '@/components/common/PageComponents';
+import { validateInspection } from '@/utils';
 
 const InspectionPage: React.FC = () => {
   const { inspectionRecords, workOrders, addInspectionRecord, getWorkOrderById } = useGearStore();
@@ -14,8 +15,14 @@ const InspectionPage: React.FC = () => {
 
   const handleSubmit = () => {
     form.validateFields().then((values) => {
+      const validation = validateInspection({ faTotal: values.faTotal, fbTotal: values.fbTotal, radialRunout: values.radialRunout, roughnessRa: values.roughnessRa, commonNormalVariation: values.commonNormalVariation });
       addInspectionRecord(values);
       message.success('齿形检测记录添加成功');
+      if (validation.warnings.length > 0) {
+        validation.warnings.forEach((w) => {
+          message.warning({ content: w.message, duration: 5 });
+        });
+      }
       setIsModalOpen(false);
       form.resetFields();
     });
@@ -194,7 +201,7 @@ const InspectionPage: React.FC = () => {
 
       <Row gutter={[16, 16]} className="mb-6">
         <Col xs={24} sm={12} lg={6}>
-          <Card className="h-full" style={{ borderRadius: 8 }} bodyStyle={{ padding: 16 }}>
+          <Card className="h-full" style={{ borderRadius: 8 }} styles={{ body: { padding: 16 } }}>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500">
                 <Activity size={20} />
@@ -208,7 +215,7 @@ const InspectionPage: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="h-full" style={{ borderRadius: 8 }} bodyStyle={{ padding: 16 }}>
+          <Card className="h-full" style={{ borderRadius: 8 }} styles={{ body: { padding: 16 } }}>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-cyan-50 flex items-center justify-center text-cyan-500">
                 <Ruler size={20} />
@@ -224,7 +231,7 @@ const InspectionPage: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="h-full" style={{ borderRadius: 8 }} bodyStyle={{ padding: 16 }}>
+          <Card className="h-full" style={{ borderRadius: 8 }} styles={{ body: { padding: 16 } }}>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center text-purple-500">
                 <CircleDashed size={20} />
@@ -240,7 +247,7 @@ const InspectionPage: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="h-full" style={{ borderRadius: 8 }} bodyStyle={{ padding: 16 }}>
+          <Card className="h-full" style={{ borderRadius: 8 }} styles={{ body: { padding: 16 } }}>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center text-green-500">
                 <Gauge size={20} />

@@ -4,7 +4,7 @@ import { CircleDot, Eye } from 'lucide-react';
 import ReactECharts from 'echarts-for-react';
 import { useGearStore } from '@/store';
 import { PageHeader, StatusTag } from '@/components/common/PageComponents';
-import { getStatusText } from '@/utils';
+import { getStatusText, validateBlank } from '@/utils';
 
 const BlankProcess: React.FC = () => {
   const { blankRecords, workOrders, addBlankRecord, getWorkOrderById } = useGearStore();
@@ -15,8 +15,14 @@ const BlankProcess: React.FC = () => {
 
   const handleSubmit = () => {
     form.validateFields().then((values) => {
+      const validation = validateBlank({ outerDiameter: values.outerDiameter, endFaceRunout: values.endFaceRunout, roughness: values.roughness });
       addBlankRecord(values);
       message.success('齿坯加工记录添加成功');
+      if (validation.warnings.length > 0) {
+        validation.warnings.forEach((w) => {
+          message.warning({ content: w.message, duration: 5 });
+        });
+      }
       setIsModalOpen(false);
       form.resetFields();
     });

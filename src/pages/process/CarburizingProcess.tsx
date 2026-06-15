@@ -4,6 +4,7 @@ import { Flame, Eye } from 'lucide-react';
 import ReactECharts from 'echarts-for-react';
 import { useGearStore } from '@/store';
 import { PageHeader, StatusTag } from '@/components/common/PageComponents';
+import { validateCarburizing } from '@/utils';
 
 const CarburizingProcess: React.FC = () => {
   const { carburizingRecords, workOrders, addCarburizingRecord, getWorkOrderById } = useGearStore();
@@ -14,8 +15,14 @@ const CarburizingProcess: React.FC = () => {
 
   const handleSubmit = () => {
     form.validateFields().then((values) => {
+      const validation = validateCarburizing({ caseDepth: values.caseDepth, surfaceHardness: values.surfaceHardness });
       addCarburizingRecord(values);
       message.success('渗碳淬火记录添加成功');
+      if (validation.warnings.length > 0) {
+        validation.warnings.forEach((w) => {
+          message.warning({ content: w.message, duration: 5 });
+        });
+      }
       setIsModalOpen(false);
       form.resetFields();
     });

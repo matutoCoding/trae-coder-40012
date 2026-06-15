@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Modal, Form, Input, InputNumber, Select, message, Button, Space, Tag, Progress } from 'antd';
+import { Table, Modal, Form, Input, InputNumber, Select, message, Button, Space, Tag, Progress, Tooltip } from 'antd';
 import { ClipboardList, Plus, Eye, Trash2, FileText } from 'lucide-react';
 import { useGearStore } from '@/store';
 import { PageHeader, StatusTag } from '@/components/common/PageComponents';
@@ -77,7 +77,7 @@ const WorkOrderList: React.FC = () => {
             />
             <div className="flex gap-0.5 mt-1.5">
               {processOrder.map((p) => (
-                <TooltipWrapper key={p} title={processNames[p]}>
+                <Tooltip key={p} title={processNames[p]}>
                   <div
                     className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-medium transition-colors"
                     style={{
@@ -87,7 +87,7 @@ const WorkOrderList: React.FC = () => {
                   >
                     {processNames[p][0]}
                   </div>
-                </TooltipWrapper>
+                </Tooltip>
               ))}
             </div>
           </div>
@@ -186,11 +186,6 @@ const WorkOrderList: React.FC = () => {
       </Modal>
     </div>
   );
-};
-
-const TooltipWrapper: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
-  const { Tooltip } = require('antd');
-  return <Tooltip title={title}>{children}</Tooltip>;
 };
 
 export default WorkOrderList;

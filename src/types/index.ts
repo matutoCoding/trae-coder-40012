@@ -133,3 +133,16 @@ export interface ProcessKey {
   color: string;
   path: string;
 }
+
+export interface QualityAlert {
+  id: string;
+  type: 'warning' | 'error' | 'info';
+  title: string;
+  level: string;
+  workOrderId: string;
+  process: string;
+  time: string;
+  field: string;
+  value: number;
+  message: string;
+}

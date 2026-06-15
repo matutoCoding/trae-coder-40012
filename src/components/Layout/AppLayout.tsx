@@ -14,6 +14,7 @@ import {
   Settings,
   PanelLeftClose,
   PanelLeft,
+  BarChart3,
 } from 'lucide-react';
 import HeaderBar from './HeaderBar';
 
@@ -45,6 +46,7 @@ const menuItems: MenuItem[] = [
   },
   { key: '/inspection', icon: FileCheck, label: '齿形检测', path: '/inspection' },
   { key: '/matching', icon: Puzzle, label: '配对啮合', path: '/matching' },
+  { key: '/quality-stats', icon: BarChart3, label: '质量统计', path: '/quality-stats' },
   { key: '/settings', icon: Settings, label: '系统设置', path: '/settings' },
 ];
 

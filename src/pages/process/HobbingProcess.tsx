@@ -4,6 +4,7 @@ import { CircleDot, Eye } from 'lucide-react';
 import ReactECharts from 'echarts-for-react';
 import { useGearStore } from '@/store';
 import { PageHeader, StatusTag } from '@/components/common/PageComponents';
+import { validateHobbing } from '@/utils';
 
 const HobbingProcess: React.FC = () => {
   const { hobbingRecords, workOrders, addHobbingRecord, getWorkOrderById } = useGearStore();
@@ -15,8 +16,14 @@ const HobbingProcess: React.FC = () => {
 
   const handleSubmit = () => {
     form.validateFields().then((values) => {
+      const validation = validateHobbing({ toothDirectionError: values.toothDirectionError, pitchCumulativeError: values.pitchCumulativeError });
       addHobbingRecord(values);
       message.success(`${currentProcessType}记录添加成功`);
+      if (validation.warnings.length > 0) {
+        validation.warnings.forEach((w) => {
+          message.warning({ content: w.message, duration: 5 });
+        });
+      }
       setIsModalOpen(false);
       form.resetFields();
     });

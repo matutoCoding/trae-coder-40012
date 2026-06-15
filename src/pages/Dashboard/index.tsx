@@ -22,7 +22,7 @@ import type { ProcessKey } from '@/types';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { workOrders, inspectionRecords } = useGearStore();
+  const { workOrders, inspectionRecords, alerts } = useGearStore();
 
   const totalWorkOrders = workOrders.length;
   const processingCount = workOrders.filter((wo) => wo.status === 'processing').length;
@@ -178,12 +178,19 @@ const Dashboard: React.FC = () => {
     },
   ];
 
-  const alerts = [
-    { type: 'warning', title: 'WO202606150002 公法线偏差超差', time: '10分钟前', level: '中等' },
-    { type: 'error', title: 'WO202606150006 齿形检测不合格', time: '32分钟前', level: '严重' },
-    { type: 'warning', title: '渗碳炉 #2 温度偏高 5℃', time: '1小时前', level: '中等' },
-    { type: 'info', title: '砂轮 SG80JV 需更换', time: '2小时前', level: '提示' },
-  ];
+  const dashboardAlerts = alerts.length > 0
+    ? alerts.slice(0, 8).map((a) => ({
+        type: a.type === 'error' ? 'error' : a.type === 'warning' ? 'warning' : 'info' as const,
+        title: a.title,
+        time: a.time,
+        level: a.level,
+      }))
+    : [
+        { type: 'warning' as const, title: 'WO202606150002 公法线偏差超差', time: '10分钟前', level: '中等' },
+        { type: 'error' as const, title: 'WO202606150006 齿形检测不合格', time: '32分钟前', level: '严重' },
+        { type: 'warning' as const, title: '渗碳炉 #2 温度偏高 5℃', time: '1小时前', level: '中等' },
+        { type: 'info' as const, title: '砂轮 SG80JV 需更换', time: '2小时前', level: '提示' },
+      ];
 
   return (
     <div className="dashboard-page">
@@ -239,7 +246,7 @@ const Dashboard: React.FC = () => {
       <Card
         title={<span className="font-semibold">工序快速入口</span>}
         className="mb-6 process-entrance"
-        bodyStyle={{ padding: 20 }}
+        styles={{ body: { padding: 20 } }}
         style={{ borderRadius: 8 }}
       >
         <Row gutter={[16, 16]}>
@@ -259,7 +266,7 @@ const Dashboard: React.FC = () => {
                       background: `linear-gradient(135deg, ${p.color}08 0%, #FFFFFF 100%)`,
                       borderRadius: 8,
                     }}
-                    bodyStyle={{ padding: '24px 12px' }}
+                    styles={{ body: { padding: '24px 12px' } }}
                   >
                     <div
                       className="w-14 h-14 mx-auto rounded-xl flex items-center justify-center mb-3 transition-transform"
@@ -329,7 +336,7 @@ const Dashboard: React.FC = () => {
             style={{ borderRadius: 8 }}
           >
             <List
-              dataSource={alerts}
+              dataSource={dashboardAlerts}
               renderItem={(item) => (
                 <List.Item className="!px-0 !py-3 border-b border-gray-100 last:border-0">
                   <List.Item.Meta

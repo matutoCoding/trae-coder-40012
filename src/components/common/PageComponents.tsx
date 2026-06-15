@@ -83,7 +83,7 @@ export const StatCard: React.FC<StatCardProps> = ({
         borderRadius: 8,
         boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
       }}
-      bodyStyle={{ padding: 20 }}
+      styles={{ body: { padding: 20 } }}
     >
       <div className="flex items-start justify-between">
         <div>
@@ -140,7 +140,7 @@ interface TabContainerProps {
 
 export const TabContainer: React.FC<TabContainerProps> = ({ items }) => {
   return (
-    <Card bodyStyle={{ padding: 0 }} className="border-0 tab-container" style={{ borderRadius: 8 }}>
+    <Card styles={{ body: { padding: 0 } }} className="border-0 tab-container" style={{ borderRadius: 8 }}>
       <Tabs
         items={items}
         defaultActiveKey={items[0]?.key}

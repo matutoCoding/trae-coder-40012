@@ -10,8 +10,9 @@ import type {
   InspectionRecord,
   MatchingRecord,
   ProcessProgress,
+  QualityAlert,
 } from '@/types';
-import { generateId, generateOrderNo, formatDateTime } from '@/utils';
+import { generateId, generateOrderNo, formatDateTime, validateBlank, validateHobbing, validateShaving, validateCarburizing, validateGrinding, validateInspection, validateMatching } from '@/utils';
 import { initialWorkOrders, initialBlankRecords, initialHobbingRecords, initialShavingRecords, initialCarburizingRecords, initialGrindingRecords, initialInspectionRecords, initialMatchingRecords } from '@/mock';
 
 interface GearStore {
@@ -23,7 +24,8 @@ interface GearStore {
   grindingRecords: GrindingRecord[];
   inspectionRecords: InspectionRecord[];
   matchingRecords: MatchingRecord[];
-  
+  alerts: QualityAlert[];
+
   addWorkOrder: (data: Partial<WorkOrder>) => WorkOrder;
   updateWorkOrder: (id: string, data: Partial<WorkOrder>) => void;
   deleteWorkOrder: (id: string) => void;
@@ -36,6 +38,7 @@ interface GearStore {
   addGrindingRecord: (data: Omit<GrindingRecord, 'id' | 'recordTime'>) => void;
   addInspectionRecord: (data: Omit<InspectionRecord, 'id' | 'recordTime'>) => void;
   addMatchingRecord: (data: Omit<MatchingRecord, 'id' | 'recordTime'>) => void;
+  addAlert: (alert: Omit<QualityAlert, 'id' | 'time'>) => void;
 
   getWorkOrderById: (id: string) => WorkOrder | undefined;
   getRecordsByWorkOrderId: (workOrderId: string) => {
@@ -60,6 +63,7 @@ export const useGearStore = create<GearStore>()(
       grindingRecords: initialGrindingRecords,
       inspectionRecords: initialInspectionRecords,
       matchingRecords: initialMatchingRecords,
+      alerts: [],
 
       addWorkOrder: (data) => {
         const now = formatDateTime();
@@ -130,6 +134,10 @@ export const useGearStore = create<GearStore>()(
           id: generateId(),
           recordTime: formatDateTime(),
         };
+        const result = validateBlank({ outerDiameter: data.outerDiameter, endFaceRunout: data.endFaceRunout, roughness: data.roughness });
+        result.warnings.forEach((w) => {
+          get().addAlert({ type: w.level, title: w.label, level: w.level, workOrderId: data.workOrderId, process: 'blank', field: w.field, value: w.value, message: w.message });
+        });
         set((state) => ({ blankRecords: [record, ...state.blankRecords] }));
         get().updateWorkOrderProgress(data.workOrderId, 'blank');
       },
@@ -140,6 +148,10 @@ export const useGearStore = create<GearStore>()(
           id: generateId(),
           recordTime: formatDateTime(),
         };
+        const result = validateHobbing({ toothDirectionError: data.toothDirectionError, pitchCumulativeError: data.pitchCumulativeError });
+        result.warnings.forEach((w) => {
+          get().addAlert({ type: w.level, title: w.label, level: w.level, workOrderId: data.workOrderId, process: 'hobbing', field: w.field, value: w.value, message: w.message });
+        });
         set((state) => ({ hobbingRecords: [record, ...state.hobbingRecords] }));
         get().updateWorkOrderProgress(data.workOrderId, 'hobbing');
       },
@@ -150,6 +162,10 @@ export const useGearStore = create<GearStore>()(
           id: generateId(),
           recordTime: formatDateTime(),
         };
+        const result = validateShaving({ allowance: data.allowance });
+        result.warnings.forEach((w) => {
+          get().addAlert({ type: w.level, title: w.label, level: w.level, workOrderId: data.workOrderId, process: 'shaving', field: w.field, value: w.value, message: w.message });
+        });
         set((state) => ({ shavingRecords: [record, ...state.shavingRecords] }));
         get().updateWorkOrderProgress(data.workOrderId, 'shaving');
       },
@@ -160,6 +176,10 @@ export const useGearStore = create<GearStore>()(
           id: generateId(),
           recordTime: formatDateTime(),
         };
+        const result = validateCarburizing({ caseDepth: data.caseDepth, surfaceHardness: data.surfaceHardness });
+        result.warnings.forEach((w) => {
+          get().addAlert({ type: w.level, title: w.label, level: w.level, workOrderId: data.workOrderId, process: 'carburizing', field: w.field, value: w.value, message: w.message });
+        });
         set((state) => ({ carburizingRecords: [record, ...state.carburizingRecords] }));
         get().updateWorkOrderProgress(data.workOrderId, 'carburizing');
       },
@@ -170,6 +190,10 @@ export const useGearStore = create<GearStore>()(
           id: generateId(),
           recordTime: formatDateTime(),
         };
+        const result = validateGrinding({ grindingAccuracy: data.grindingAccuracy });
+        result.warnings.forEach((w) => {
+          get().addAlert({ type: w.level, title: w.label, level: w.level, workOrderId: data.workOrderId, process: 'grinding', field: w.field, value: w.value, message: w.message });
+        });
         set((state) => ({ grindingRecords: [record, ...state.grindingRecords] }));
         get().updateWorkOrderProgress(data.workOrderId, 'grinding');
       },
@@ -180,6 +204,10 @@ export const useGearStore = create<GearStore>()(
           id: generateId(),
           recordTime: formatDateTime(),
         };
+        const result = validateInspection({ faTotal: data.faTotal, fbTotal: data.fbTotal, radialRunout: data.radialRunout, roughnessRa: data.roughnessRa, commonNormalVariation: data.commonNormalVariation });
+        result.warnings.forEach((w) => {
+          get().addAlert({ type: w.level, title: w.label, level: w.level, workOrderId: data.workOrderId, process: 'inspection', field: w.field, value: w.value, message: w.message });
+        });
         set((state) => ({ inspectionRecords: [record, ...state.inspectionRecords] }));
         get().updateWorkOrderProgress(data.workOrderId, 'inspection');
       },
@@ -190,8 +218,21 @@ export const useGearStore = create<GearStore>()(
           id: generateId(),
           recordTime: formatDateTime(),
         };
+        const result = validateMatching({ noiseDb: data.noiseDb, backlash: data.backlash });
+        result.warnings.forEach((w) => {
+          get().addAlert({ type: w.level, title: w.label, level: w.level, workOrderId: data.workOrderId, process: 'matching', field: w.field, value: w.value, message: w.message });
+        });
         set((state) => ({ matchingRecords: [record, ...state.matchingRecords] }));
         get().updateWorkOrderProgress(data.workOrderId, 'matching');
+      },
+
+      addAlert: (alert) => {
+        const newAlert: QualityAlert = {
+          ...alert,
+          id: generateId(),
+          time: formatDateTime(),
+        };
+        set((state) => ({ alerts: [newAlert, ...state.alerts] }));
       },
 
       getWorkOrderById: (id) => {
