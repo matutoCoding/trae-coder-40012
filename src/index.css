@@ -1,0 +1,184 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: #F5F6F7;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* ===== 布局动画 ===== */
+.gear-content {
+  animation: fadeSlideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== 侧边栏样式 ===== */
+.gear-sider .ant-menu {
+  background: transparent !important;
+}
+
+.gear-sider .ant-menu-item {
+  margin: 4px 8px !important;
+  width: calc(100% - 16px) !important;
+  border-radius: 4px !important;
+}
+
+.gear-sider .ant-menu-item-selected {
+  box-shadow: 0 2px 8px rgba(22, 93, 255, 0.35);
+}
+
+.gear-sider .ant-menu-submenu-title {
+  margin: 4px 8px !important;
+  border-radius: 4px !important;
+}
+
+/* ===== 卡片悬浮效果 ===== */
+.stat-card {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.process-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 28px rgba(22, 93, 255, 0.12);
+}
+
+.process-card:hover svg {
+  transform: scale(1.1) rotate(6deg);
+  transition: transform 0.3s ease;
+}
+
+/* ===== 工作台入口卡片 ===== */
+.process-entrance .ant-card-body {
+  padding: 16px !important;
+}
+
+/* ===== 表格行 hover ===== */
+.ant-table-tbody > tr {
+  transition: all 0.15s ease;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: #F5F8FF !important;
+}
+
+/* ===== 步骤条 ===== */
+.ant-steps-item-icon {
+  transition: all 0.2s ease;
+}
+
+/* ===== 标签页 ===== */
+.ant-tabs-tab {
+  font-size: 14px !important;
+}
+
+/* ===== 滚动条样式 ===== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F2F3F5;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C9CDD4;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #86909C;
+}
+
+/* ===== 描述列表美化 ===== */
+.ant-descriptions-title {
+  font-weight: 600 !important;
+}
+
+.ant-descriptions-item-label {
+  color: #4E5969 !important;
+  font-weight: 500;
+  background: #FAFAFA !important;
+}
+
+/* ===== 表单美化 ===== */
+.ant-form-item-label > label {
+  font-weight: 500;
+  color: #4E5969;
+}
+
+/* ===== 输入框聚焦效果 ===== */
+.ant-input-affix-wrapper-focused,
+.ant-input-affix-wrapper:focus,
+.ant-input-focused,
+.ant-input:focus,
+.ant-select-focused .ant-select-selector {
+  box-shadow: 0 0 0 2px rgba(22, 93, 255, 0.1) !important;
+}
+
+/* ===== 按钮 ===== */
+.ant-btn-primary {
+  box-shadow: 0 2px 6px rgba(22, 93, 255, 0.25);
+  transition: all 0.2s ease;
+}
+
+.ant-btn-primary:hover {
+  box-shadow: 0 4px 12px rgba(22, 93, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+/* ===== 分隔线 ===== */
+.ant-divider-inner-text {
+  color: #86909C;
+  font-weight: 500;
+}
+
+/* ===== 模态框 ===== */
+.ant-modal {
+  border-radius: 8px;
+}
+
+.ant-modal-header {
+  border-bottom: 1px solid #F2F3F5;
+  padding: 16px 24px;
+}
+
+.ant-modal-footer {
+  border-top: 1px solid #F2F3F5;
+  padding: 12px 24px;
+}
+
+/* ===== 工单详情工序记录卡片 ===== */
+.record-section .ant-card-head {
+  border-bottom: 1px solid #F2F3F5;
+}
