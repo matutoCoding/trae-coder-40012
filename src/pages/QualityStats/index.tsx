@@ -5,6 +5,7 @@ import { useGearStore } from '@/store';
 import { PageHeader, StatCard } from '@/components/common/PageComponents';
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { isProcessRecordAnomaly } from '@/utils';
 
 const processNames: Record<string, string> = {
   blank: '齿坯加工',
@@ -78,13 +79,7 @@ const QualityStats: React.FC = () => {
       const totalCount = filtered.length;
 
       filtered.forEach((r: any) => {
-        if (key === 'blank' && (r.outerDiameter > 260 || r.outerDiameter < 20 || r.endFaceRunout > 0.02 || r.roughness > 3.2)) anomalyCount++;
-        if (key === 'hobbing' && (r.toothDirectionError > 0.02 || r.pitchCumulativeError > 0.06)) anomalyCount++;
-        if (key === 'shaving' && (r.allowance < 0.1 || r.allowance > 0.2)) anomalyCount++;
-        if (key === 'carburizing' && (r.caseDepth < 0.5 || r.caseDepth > 1.5 || r.surfaceHardness < 58)) anomalyCount++;
-        if (key === 'grinding' && r.grindingAccuracy > 6) anomalyCount++;
-        if (key === 'inspection' && r.result === 'unqualified') anomalyCount++;
-        if (key === 'matching' && (r.noiseDb > 72 || r.result === 'unqualified')) anomalyCount++;
+        if (isProcessRecordAnomaly(key, r)) anomalyCount++;
       });
 
       const rate = totalCount > 0 ? Math.round(((totalCount - anomalyCount) / totalCount) * 100) : 0;
@@ -141,15 +136,7 @@ const QualityStats: React.FC = () => {
 
       filtered.forEach((r: any) => {
         const operator = r.operator || r.inspector || '未知';
-        let isAnomaly = false;
-
-        if (key === 'blank' && (r.outerDiameter > 260 || r.endFaceRunout > 0.02)) isAnomaly = true;
-        if (key === 'hobbing' && (r.toothDirectionError && r.toothDirectionError > 0.02)) isAnomaly = true;
-        if (key === 'shaving' && (r.allowance < 0.1 || r.allowance > 0.2)) isAnomaly = true;
-        if (key === 'carburizing' && (r.caseDepth < 0.5 || r.surfaceHardness < 58)) isAnomaly = true;
-        if (key === 'grinding' && r.grindingAccuracy > 6) isAnomaly = true;
-        if (key === 'inspection' && r.result === 'unqualified') isAnomaly = true;
-        if (key === 'matching' && (r.result === 'unqualified' || r.noiseDb > 72)) isAnomaly = true;
+        const isAnomaly = isProcessRecordAnomaly(key, r);
 
         if (!statsMap[operator]) statsMap[operator] = { total: 0, anomaly: 0 };
         statsMap[operator].total++;
@@ -273,13 +260,7 @@ const QualityStats: React.FC = () => {
 
         weekTotal += filtered.length;
         filtered.forEach((r: any) => {
-          if (key === 'blank' && (r.outerDiameter > 260 || r.endFaceRunout > 0.02)) weekAnomaly++;
-          if (key === 'hobbing' && (r.toothDirectionError && r.toothDirectionError > 0.02)) weekAnomaly++;
-          if (key === 'shaving' && (r.allowance < 0.1 || r.allowance > 0.2)) weekAnomaly++;
-          if (key === 'carburizing' && (r.caseDepth < 0.5 || r.surfaceHardness < 58)) weekAnomaly++;
-          if (key === 'grinding' && r.grindingAccuracy > 6) weekAnomaly++;
-          if (key === 'inspection' && r.result === 'unqualified') weekAnomaly++;
-          if (key === 'matching' && (r.result === 'unqualified' || r.noiseDb > 72)) weekAnomaly++;
+          if (isProcessRecordAnomaly(key, r)) weekAnomaly++;
         });
       });
 

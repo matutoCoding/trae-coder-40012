@@ -180,16 +180,19 @@ const Dashboard: React.FC = () => {
 
   const dashboardAlerts = alerts.length > 0
     ? alerts.slice(0, 8).map((a) => ({
+        id: a.id,
         type: a.type === 'error' ? 'error' : a.type === 'warning' ? 'warning' : 'info' as const,
         title: a.title,
         time: a.time,
         level: a.level,
+        isReal: true,
+        status: a.status,
       }))
     : [
-        { type: 'warning' as const, title: 'WO202606150002 公法线偏差超差', time: '10分钟前', level: '中等' },
-        { type: 'error' as const, title: 'WO202606150006 齿形检测不合格', time: '32分钟前', level: '严重' },
-        { type: 'warning' as const, title: '渗碳炉 #2 温度偏高 5℃', time: '1小时前', level: '中等' },
-        { type: 'info' as const, title: '砂轮 SG80JV 需更换', time: '2小时前', level: '提示' },
+        { id: 'demo-1', type: 'warning' as const, title: 'WO202606150002 公法线偏差超差', time: '10分钟前', level: '中等', isReal: false, status: 'pending' as const },
+        { id: 'demo-2', type: 'error' as const, title: 'WO202606150006 齿形检测不合格', time: '32分钟前', level: '严重', isReal: false, status: 'pending' as const },
+        { id: 'demo-3', type: 'warning' as const, title: '渗碳炉 #2 温度偏高 5℃', time: '1小时前', level: '中等', isReal: false, status: 'pending' as const },
+        { id: 'demo-4', type: 'info' as const, title: '砂轮 SG80JV 需更换', time: '2小时前', level: '提示', isReal: false, status: 'pending' as const },
       ];
 
   return (
@@ -338,7 +341,10 @@ const Dashboard: React.FC = () => {
             <List
               dataSource={dashboardAlerts}
               renderItem={(item) => (
-                <List.Item className="!px-0 !py-3 border-b border-gray-100 last:border-0">
+                <List.Item
+                  className={`!px-0 !py-3 border-b border-gray-100 last:border-0 ${item.isReal ? 'cursor-pointer hover:bg-gray-50 transition-colors' : ''}`}
+                  onClick={() => item.isReal && navigate(`/quality-alerts?alertId=${item.id}`)}
+                >
                   <List.Item.Meta
                     avatar={
                       <Avatar
@@ -368,22 +374,46 @@ const Dashboard: React.FC = () => {
                         }}
                       />
                     }
-                    title={<span className="text-sm font-medium text-gray-800">{item.title}</span>}
+                    title={
+                      <span className="text-sm font-medium text-gray-800">
+                        {item.title}
+                        {!item.isReal && (
+                          <Tag color="default" style={{ marginLeft: 6, padding: '0 4px', fontSize: 10 }}>
+                            示例
+                          </Tag>
+                        )}
+                        {item.isReal && item.status && (
+                          <Tag
+                            color={item.status === 'pending' ? 'red' : item.status === 'processing' ? 'orange' : 'green'}
+                            style={{ marginLeft: 6, padding: '0 4px', fontSize: 10 }}
+                          >
+                            {item.status === 'pending' ? '待处理' : item.status === 'processing' ? '处理中' : '已关闭'}
+                          </Tag>
+                        )}
+                      </span>
+                    }
                     description={
                       <div className="flex items-center justify-between mt-1">
                         <span className="text-xs text-gray-400">{item.time}</span>
-                        <Tag
-                          color={
-                            item.level === '严重'
-                              ? 'red'
-                              : item.level === '中等'
-                              ? 'orange'
-                              : 'blue'
-                          }
-                          style={{ margin: 0 }}
-                        >
-                          {item.level}
-                        </Tag>
+                        <div className="flex items-center gap-2">
+                          {item.isReal && (
+                            <span className="text-xs text-blue-500 hover:text-blue-700">
+                              查看处理 →
+                            </span>
+                          )}
+                          <Tag
+                            color={
+                              item.level === '严重'
+                                ? 'red'
+                                : item.level === '中等'
+                                ? 'orange'
+                                : 'blue'
+                            }
+                            style={{ margin: 0 }}
+                          >
+                            {item.level}
+                          </Tag>
+                        </div>
                       </div>
                     }
                   />

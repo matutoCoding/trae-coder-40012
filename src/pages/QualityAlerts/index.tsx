@@ -37,11 +37,12 @@ const levelColors: Record<string, string> = {
 
 const QualityAlerts: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { alerts, workOrders, handleAlert, closeAlert } = useGearStore();
+  const { alerts, workOrders, handleAlert, closeAlert, updateAlertStatus } = useGearStore();
 
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedProcess, setSelectedProcess] = useState<string>('all');
   const [selectedModel, setSelectedModel] = useState<string>('all');
+  const [selectedWorkOrderId, setSelectedWorkOrderId] = useState<string>('all');
   const [selectedAlert, setSelectedAlert] = useState<QualityAlert | null>(null);
 
   const [handleModalOpen, setHandleModalOpen] = useState(false);
@@ -60,20 +61,22 @@ const QualityAlerts: React.FC = () => {
     return alerts.filter((a) => {
       if (selectedStatus !== 'all' && a.status !== selectedStatus) return false;
       if (selectedProcess !== 'all' && a.process !== selectedProcess) return false;
-      if (selectedModel !== 'all') {
+      if (selectedWorkOrderId !== 'all' && a.workOrderId !== selectedWorkOrderId) return false;
+      if (selectedWorkOrderId === 'all' && selectedModel !== 'all') {
         const wo = getWorkOrder(a.workOrderId);
         if (!wo || wo.gearModel !== selectedModel) return false;
       }
       return true;
     });
-  }, [alerts, selectedStatus, selectedProcess, selectedModel, workOrders]);
+  }, [alerts, selectedStatus, selectedProcess, selectedModel, selectedWorkOrderId, workOrders]);
 
   useEffect(() => {
     const alertId = searchParams.get('alertId');
     const workOrderId = searchParams.get('workOrderId');
     const process = searchParams.get('process');
-    
+
     if (workOrderId) {
+      setSelectedWorkOrderId(workOrderId);
       const wo = workOrders.find((w) => w.id === workOrderId);
       if (wo) {
         setSelectedModel(wo.gearModel);
@@ -86,18 +89,28 @@ const QualityAlerts: React.FC = () => {
       const alert = alerts.find((a) => a.id === alertId);
       if (alert) {
         setSelectedAlert(alert);
+        if (selectedWorkOrderId === 'all' && alert.workOrderId) {
+          setSelectedWorkOrderId(alert.workOrderId);
+        }
       }
     }
   }, [searchParams, alerts, workOrders]);
 
   const handleViewDetail = (alert: QualityAlert) => {
     setSelectedAlert(alert);
-    setSearchParams({ alertId: alert.id });
+    const newParams: Record<string, string> = {};
+    if (selectedWorkOrderId !== 'all') newParams.workOrderId = selectedWorkOrderId;
+    if (selectedProcess !== 'all') newParams.process = selectedProcess;
+    newParams.alertId = alert.id;
+    setSearchParams(newParams);
   };
 
   const handleCloseDetail = () => {
     setSelectedAlert(null);
-    setSearchParams({});
+    const newParams: Record<string, string> = {};
+    if (selectedWorkOrderId !== 'all') newParams.workOrderId = selectedWorkOrderId;
+    if (selectedProcess !== 'all') newParams.process = selectedProcess;
+    setSearchParams(newParams);
   };
 
   const openHandleModal = () => {
@@ -313,6 +326,17 @@ const QualityAlerts: React.FC = () => {
             styles={{ body: { padding: 16 } }}
             extra={
               <Space>
+                {selectedWorkOrderId !== 'all' && (
+                  <Tag closable color="blue" onClose={() => {
+                    setSelectedWorkOrderId('all');
+                    const newParams: Record<string, string> = {};
+                    if (selectedProcess !== 'all') newParams.process = selectedProcess;
+                    if (selectedAlert) newParams.alertId = selectedAlert.id;
+                    setSearchParams(newParams);
+                  }}>
+                    工单: {getWorkOrder(selectedWorkOrderId)?.orderNo || selectedWorkOrderId}
+                  </Tag>
+                )}
                 <Select
                   value={selectedStatus}
                   onChange={setSelectedStatus}
@@ -326,7 +350,14 @@ const QualityAlerts: React.FC = () => {
                 />
                 <Select
                   value={selectedProcess}
-                  onChange={setSelectedProcess}
+                  onChange={(v) => {
+                    setSelectedProcess(v);
+                    const newParams: Record<string, string> = {};
+                    if (selectedWorkOrderId !== 'all') newParams.workOrderId = selectedWorkOrderId;
+                    if (v !== 'all') newParams.process = v;
+                    if (selectedAlert) newParams.alertId = selectedAlert.id;
+                    setSearchParams(newParams);
+                  }}
                   style={{ width: 120 }}
                   options={[
                     { label: '全部工序', value: 'all' },
@@ -335,7 +366,12 @@ const QualityAlerts: React.FC = () => {
                 />
                 <Select
                   value={selectedModel}
-                  onChange={setSelectedModel}
+                  onChange={(v) => {
+                    setSelectedModel(v);
+                    if (v !== 'all') {
+                      setSelectedWorkOrderId('all');
+                    }
+                  }}
                   style={{ width: 120 }}
                   options={[{ label: '全部型号', value: 'all' }, ...allModels.map((m) => ({ label: m, value: m }))]}
                 />

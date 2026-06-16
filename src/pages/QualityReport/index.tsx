@@ -4,6 +4,7 @@ import { FileText, Download, BarChart3, Users, AlertTriangle } from 'lucide-reac
 import ReactECharts from 'echarts-for-react';
 import { useGearStore } from '@/store';
 import { PageHeader, StatCard } from '@/components/common/PageComponents';
+import { isProcessRecordAnomaly } from '@/utils';
 import dayjs, { Dayjs } from 'dayjs';
 
 const processNames: Record<string, string> = {
@@ -69,14 +70,7 @@ const QualityReport: React.FC = () => {
         const model = wo?.gearModel || '未知';
         const operator = r.operator || r.inspector || '未知';
 
-        let isAnomaly = false;
-        if (key === 'blank' && (r.outerDiameter > 260 || r.outerDiameter < 20 || r.endFaceRunout > 0.02 || r.roughness > 3.2)) isAnomaly = true;
-        if (key === 'hobbing' && (r.toothDirectionError && r.toothDirectionError > 0.02 || r.pitchCumulativeError && r.pitchCumulativeError > 0.06)) isAnomaly = true;
-        if (key === 'shaving' && (r.allowance < 0.1 || r.allowance > 0.2)) isAnomaly = true;
-        if (key === 'carburizing' && (r.caseDepth < 0.5 || r.caseDepth > 1.5 || r.surfaceHardness < 58)) isAnomaly = true;
-        if (key === 'grinding' && r.grindingAccuracy > 6) isAnomaly = true;
-        if (key === 'inspection' && r.result === 'unqualified') isAnomaly = true;
-        if (key === 'matching' && (r.noiseDb > 72 || r.result === 'unqualified')) isAnomaly = true;
+        const isAnomaly = isProcessRecordAnomaly(key, r);
 
         if (!modelStats[model]) modelStats[model] = { total: 0, anomaly: 0 };
         modelStats[model].total++;

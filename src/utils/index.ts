@@ -147,3 +147,48 @@ export const validateMatching = (data: { noiseDb: number; backlash: number }): V
   if (data.backlash < 0.05 || data.backlash > 0.25) warnings.push({ field: 'backlash', label: '侧隙', value: data.backlash, message: `侧隙 ${data.backlash.toFixed(3)}mm 超出推荐范围(0.05~0.25mm)`, level: 'warning' });
   return { valid: warnings.filter(w => w.level === 'error').length === 0, warnings };
 };
+
+export const isProcessRecordAnomaly = (process: string, record: any): boolean => {
+  switch (process) {
+    case 'blank':
+      return (
+        record.outerDiameter > 260 ||
+        record.outerDiameter < 20 ||
+        record.endFaceRunout > 0.02 ||
+        record.roughness > 3.2
+      );
+    case 'hobbing':
+      return (
+        (record.toothDirectionError !== undefined && record.toothDirectionError > 0.02) ||
+        (record.pitchCumulativeError !== undefined && record.pitchCumulativeError > 0.06)
+      );
+    case 'shaving':
+      return record.allowance < 0.1 || record.allowance > 0.2;
+    case 'carburizing':
+      return (
+        record.caseDepth < 0.5 ||
+        record.caseDepth > 1.5 ||
+        record.surfaceHardness < 58
+      );
+    case 'grinding':
+      return record.grindingAccuracy > 6;
+    case 'inspection':
+      return (
+        record.faTotal > 0.02 ||
+        record.fbTotal > 0.025 ||
+        record.radialRunout > 0.05 ||
+        record.roughnessRa > 0.8 ||
+        record.commonNormalVariation > 0.02 ||
+        record.result === 'unqualified'
+      );
+    case 'matching':
+      return (
+        record.noiseDb > 72 ||
+        record.backlash < 0.05 ||
+        record.backlash > 0.25 ||
+        record.result === 'unqualified'
+      );
+    default:
+      return false;
+  }
+};
